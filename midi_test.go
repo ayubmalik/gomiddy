@@ -3,19 +3,16 @@ package gomiddy
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/deliveroo/assert-go"
 )
 
 func TestLoad(t *testing.T) {
-
-	midi, err := Load("testdata/test.mid")
+	midi, err := Load("testdata/test2.mid")
 	if err != nil {
 		t.Error(err)
 	}
 
-	require.NotNil(t, midi)
-	assert.Equal(t, 4, midi.Tracks, "wrong track count")
-	assert.Equal(t, 120, midi.Tempo, "wrong tempo")
-
+	assert.NotNil(t, midi)
+	assert.Equal(t, midi.NumTracks, 4)
+	assert.Equal(t, midi.Tempo, 96)
 }

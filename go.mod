@@ -2,4 +2,4 @@ module github.com/ayubmalik/gomiddy
 
 go 1.15
 
-require github.com/stretchr/testify v1.6.1
+require github.com/deliveroo/assert-go v1.0.5
