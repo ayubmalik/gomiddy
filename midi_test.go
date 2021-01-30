@@ -7,12 +7,12 @@ import (
 )
 
 func TestLoad(t *testing.T) {
-	midi, err := Load("testdata/test2.mid")
+	midi, err := Open("testdata/test2.mid")
 	if err != nil {
 		t.Error(err)
 	}
 
 	assert.NotNil(t, midi)
-	assert.Equal(t, midi.NumTracks, 4)
+	assert.Equal(t, midi.TrackCount, 4)
 	assert.Equal(t, midi.Tempo, 96)
 }

@@ -3,7 +3,6 @@ package gomiddy
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 )
@@ -23,7 +22,7 @@ type chunkReader struct {
 	reader io.Reader
 }
 
-func (cr chunkReader) header() (*MHeader, error) {
+func (cr chunkReader) header() (*Header, error) {
 	chunk, err := cr.chunk()
 	if err != nil {
 		return nil, err
@@ -38,13 +37,15 @@ func (cr chunkReader) header() (*MHeader, error) {
 
 	mask := division
 	mask = mask >> 15
+
+	// TODO use SMPTE division
 	if mask > 0 {
 		fmt.Println("WARNING time is in SMPTE!")
 	}
-	return &MHeader{numTracks: tracks, division: division, format: format}, nil
+	return &Header{trackCount: tracks, division: division, format: format}, nil
 }
 
-func (cr chunkReader) track() (*MTrack, error) {
+func (cr chunkReader) track() (*Track, error) {
 	chunk, err := cr.chunk()
 	if err != nil {
 		return nil, err
@@ -53,17 +54,17 @@ func (cr chunkReader) track() (*MTrack, error) {
 		return nil, MidiFileError{msg: "Bad file format, chunk type not MTrk"}
 	}
 
-	track := MTrack{name: "untitled"}
-	events := make([]MEvent, 0)
-	var lastStatus byte
+	track := Track{Name: "untitled"}
+	events := make([]Event, 0)
 
+	var lastStatus byte
 	r := bytes.NewReader(chunk.data)
 	for {
 		d, err := binary.ReadUvarint(r)
 		if err == io.EOF {
 			break
 		}
-		event := MEvent{delta: d, eventType: "midi"}
+		event := Event{delta: d, eventType: unknown}
 		statusByte, err := r.ReadByte()
 
 		if statusByte&0x80 == 0 {
@@ -71,11 +72,11 @@ func (cr chunkReader) track() (*MTrack, error) {
 		} else {
 			lastStatus = statusByte
 		}
-		msg := (lastStatus & 0xF0) >> 4
+
+		msg := lastStatus & 0xF0 >> 4
 
 		switch msg {
 		case 0x2, 0x3, 0x4, 0x5, 0x6:
-			event.eventType = "unknown"
 			r.ReadByte()
 		case 0x8, 0x9, 0xA, 0xB, 0xE:
 			r.ReadByte()
@@ -83,7 +84,7 @@ func (cr chunkReader) track() (*MTrack, error) {
 		case 0xC, 0xD:
 			r.ReadByte()
 		case 0xF:
-			event.eventType = "meta"
+			event.eventType = meta
 			b, _ := r.ReadByte()
 			meta := int(b)
 			n, _ := binary.ReadUvarint(r)
@@ -91,18 +92,16 @@ func (cr chunkReader) track() (*MTrack, error) {
 			r.Read(buf)
 
 			if meta == 3 {
-				//name := string(buf)
-				track.name = string(buf)
-				fmt.Println("META, N, BUF =", meta, n, buf)
+				track.Name = string(buf)
 			}
 
 		default:
-			return nil, errors.New("unknown msg type " + string(msg))
+			return nil, MidiFileError{msg: fmt.Sprintf("Unknown MIDI type %d", msg)}
 		}
 		events = append(events, event)
 	}
 
-	track.events = events
+	track.Events = events
 	return &track, nil
 }
 
