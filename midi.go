@@ -77,10 +77,6 @@ func (e EventType) String() string {
 	}
 }
 
-func (e EventType) bin() string {
-	return fmt.Sprintf("%b", e)
-}
-
 // Event represents a MIDI event.
 type Event struct {
 	delta     uint64
