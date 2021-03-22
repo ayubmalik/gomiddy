@@ -50,7 +50,7 @@ type Header struct {
 }
 
 // EventType represents MIDI event types.
-type EventType byte
+type EventType uint8
 
 func (e EventType) String() string {
 	switch e {
@@ -77,10 +77,17 @@ func (e EventType) String() string {
 	}
 }
 
+func (e EventType) bin() string {
+	return fmt.Sprintf("%b", e)
+}
+
 // Event represents a MIDI event.
 type Event struct {
 	delta     uint64
 	eventType EventType
+	channel   uint8
+	velocity  uint8
+	program   uint8
 }
 
 // MidiFileError represents an error when reading a MIDI file.
@@ -115,7 +122,6 @@ func Open(file string) (*MIDIFile, error) {
 	for {
 		track, err := cr.track()
 		if err != nil {
-			fmt.Println("got error", err)
 			if err == io.EOF {
 				break
 			}

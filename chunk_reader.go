@@ -66,6 +66,9 @@ func (cr chunkReader) track() (*Track, error) {
 		}
 		event := Event{delta: d, eventType: unknown}
 		statusByte, err := r.ReadByte()
+		if err != nil {
+			return nil, err
+		}
 
 		if statusByte&0x80 == 0 {
 			r.UnreadByte()
@@ -73,22 +76,40 @@ func (cr chunkReader) track() (*Track, error) {
 			lastStatus = statusByte
 		}
 
-		msg := lastStatus & 0xF0 >> 4
+		event.eventType = EventType(lastStatus)
+		event.channel = (lastStatus & 0x0F)
 
-		switch msg {
-		case 0x2, 0x3, 0x4, 0x5, 0x6:
+		switch event.eventType {
+		case noteOn, noteOff:
+			_, err := r.ReadByte()
+			if err != nil {
+				return nil, err
+			}
+
+			vel, err := r.ReadByte()
+			if err != nil {
+				return nil, err
+			}
+			event.velocity = uint8(vel)
+
+		case progChange:
+			prg, err := r.ReadByte()
+			if err != nil {
+				return nil, err
+			}
+			event.program = uint8(prg)
+		case polyPressure, controller, pithchBend:
 			r.ReadByte()
-		case 0x8, 0x9, 0xA, 0xB, 0xE:
 			r.ReadByte()
+		case chanPressure:
 			r.ReadByte()
-		case 0xC, 0xD:
-			r.ReadByte()
-		case 0xF:
-			event.eventType = meta
+		case sysEx:
+
+		case meta:
 			b, _ := r.ReadByte()
 			meta := int(b)
 			n, _ := binary.ReadUvarint(r)
-			buf := make([]byte, n, n)
+			buf := make([]byte, n)
 			r.Read(buf)
 
 			if meta == 3 {
@@ -96,7 +117,7 @@ func (cr chunkReader) track() (*Track, error) {
 			}
 
 		default:
-			return nil, MidiFileError{msg: fmt.Sprintf("Unknown MIDI type %d", msg)}
+			return nil, MidiFileError{msg: fmt.Sprintf("Unknown MIDI type %d", lastStatus)}
 		}
 		events = append(events, event)
 	}
@@ -106,7 +127,7 @@ func (cr chunkReader) track() (*Track, error) {
 }
 
 func (cr chunkReader) chunk() (*chunk, error) {
-	buf := make([]byte, 4, 4)
+	buf := make([]byte, 4)
 	_, err := io.ReadFull(cr.reader, buf)
 	if err != nil {
 		return nil, err
@@ -120,31 +141,10 @@ func (cr chunkReader) chunk() (*chunk, error) {
 	}
 
 	chunk.len = binary.BigEndian.Uint32(buf)
-	chunk.data = make([]byte, chunk.len, chunk.len)
+	chunk.data = make([]byte, chunk.len)
 	_, err = io.ReadFull(cr.reader, chunk.data)
 	if err != nil {
 		return nil, err
 	}
 	return &chunk, nil
-}
-
-func decodeVarInt(buf []byte) (x uint32, n int) {
-	if len(buf) < 1 {
-		return 0, 0
-	}
-
-	if buf[0] <= 0x80 {
-		return uint32(buf[0]), 1
-	}
-
-	var b byte
-	for _, b = range buf {
-		x = x << 7
-		x |= uint32(b) & 0x7F
-		n++
-		if b&0x80 == 0 {
-			return x, n
-		}
-	}
-	return x, n
 }
