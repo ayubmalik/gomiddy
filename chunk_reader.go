@@ -104,16 +104,28 @@ func (cr chunkReader) track() (*Track, error) {
 		case chanPressure:
 			r.ReadByte()
 		case sysEx:
-
+			n, _ := r.ReadByte()
+			io.CopyN(io.Discard, r, int64(n))
 		case meta:
-			b, _ := r.ReadByte()
-			meta := int(b)
+			mtype, _ := r.ReadByte()
 			n, _ := binary.ReadUvarint(r)
 			buf := make([]byte, n)
 			r.Read(buf)
 
-			if meta == 3 {
+			if mtype == 0x3 {
 				track.Name = string(buf)
+			}
+
+			if mtype == 0x1 {
+				fmt.Println("device", string(buf))
+			}
+
+			if mtype == 0x51 {
+				ms := int(uint(buf[2]) | uint(buf[1])<<8 | uint(buf[0])<<16)
+				bpm := 60000000 / ms
+				_ = ms + bpm
+				// TODO set tempo and tick intervals
+				//60000 / (BPM * PPQ)
 			}
 
 		default:
