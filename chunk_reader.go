@@ -12,6 +12,10 @@ const (
 	mTrk = "MTrk"
 )
 
+const (
+	msMin = 60000000
+)
+
 type chunk struct {
 	cType string
 	len   uint32
@@ -122,7 +126,7 @@ func (cr chunkReader) track() (*Track, error) {
 
 			if mtype == 0x51 {
 				ms := int(uint(buf[2]) | uint(buf[1])<<8 | uint(buf[0])<<16)
-				bpm := 60000000 / ms
+				bpm := MS_PER_MIN / ms
 				_ = ms + bpm
 				// TODO set tempo and tick intervals
 				//60000 / (BPM * PPQ)
