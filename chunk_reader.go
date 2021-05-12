@@ -126,8 +126,8 @@ func (cr chunkReader) track() (*Track, error) {
 
 			if mtype == 0x51 {
 				ms := int(uint(buf[2]) | uint(buf[1])<<8 | uint(buf[0])<<16)
-				bpm := MS_PER_MIN / ms
-				_ = ms + bpm
+				bpm := msMin / ms
+				track.tempo = bpm
 				// TODO set tempo and tick intervals
 				//60000 / (BPM * PPQ)
 			}

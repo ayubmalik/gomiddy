@@ -8,7 +8,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
 	"os"
 )
 
@@ -36,6 +35,7 @@ type MIDIFile struct {
 type Track struct {
 	Name   string
 	Events []Event
+	tempo  int
 }
 
 func (t Track) String() string {
@@ -111,10 +111,7 @@ func Open(file string) (*MIDIFile, error) {
 		return nil, MidiFileError{msg: "Bad Header", err: err}
 	}
 
-	log.Println("format", hdr.format)
-	log.Println("numTracks", hdr.trackCount)
-	log.Println("division", hdr.division)
-
+	tempo := 0
 	for {
 		track, err := cr.track()
 		if err != nil {
@@ -124,8 +121,10 @@ func Open(file string) (*MIDIFile, error) {
 			return nil, err
 		}
 
-		fmt.Println("TRACK", track)
+		if track.tempo != 0 {
+			tempo = track.tempo
+		}
 	}
-	midi := &MIDIFile{Name: "TODO", TrackCount: hdr.trackCount, Tempo: 0}
+	midi := &MIDIFile{Name: "TODO", TrackCount: hdr.trackCount, Tempo: tempo}
 	return midi, nil
 }
